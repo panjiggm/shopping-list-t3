@@ -1,32 +1,61 @@
+import { usePresignedUpload } from "next-s3-upload";
+import Image from "next/image";
 import { Dispatch, SetStateAction, useState } from "react";
+
+type ProductType = {
+  name: string;
+  price: number;
+  checked: boolean;
+};
+
+type ImageType = {
+  imgUrl: string;
+  fileName: string;
+  s3Key: string;
+};
 
 interface ProductModalProps {
   onModalOpen: Dispatch<SetStateAction<boolean>>;
-  createProduct: ({
-    name,
-    price,
-    checked,
-  }: {
-    name: string;
-    price: number;
-    checked: boolean;
-  }) => void;
+  createProduct: ({ name, price, checked }: ProductType) => void;
+  setImagesData: Dispatch<SetStateAction<ImageType[]>>;
 }
 
 export const ProductModal: React.FC<ProductModalProps> = ({
   onModalOpen,
   createProduct,
+  setImagesData,
 }) => {
+  let { openFileDialog, uploadToS3 } = usePresignedUpload();
+
   const [inputProduct, setInputProduct] = useState<{
     name: string;
     price: number;
   }>({ name: "", price: 0 });
+  const [urls, setUrls] = useState<string[]>([]);
+
+  const handleFilesChange = async ({ target }: any) => {
+    const files = Array.from(target.files);
+
+    for (let index = 0; index < files.length; index++) {
+      const file = files[index] as File;
+      const resFile = await uploadToS3(file);
+      const fileName = resFile.key.split("/")[2] as string;
+      const imgUrl = resFile.url;
+
+      setUrls((current) => [...current, imgUrl]);
+      setImagesData((current) => [
+        ...current,
+        { fileName, imgUrl, s3Key: resFile.key },
+      ]);
+    }
+  };
 
   const handleCreateProduct = () => {
     const { name, price } = inputProduct;
 
     createProduct({ name, price, checked: false });
     setInputProduct({ name: "", price: 0 });
+
     onModalOpen(false);
   };
 
@@ -61,6 +90,25 @@ export const ProductModal: React.FC<ProductModalProps> = ({
             }
             className="w-full rounded border border-gray-300 bg-gray-200 p-2 text-xs shadow-sm focus:border-violet-300 focus:ring focus:ring-white"
           />
+        </div>
+        <div>
+          <input
+            type="file"
+            name="file"
+            multiple={true}
+            onChange={handleFilesChange}
+          />
+          <div className="flex items-center space-x-1">
+            {urls?.map((url, idx) => (
+              <Image
+                key={idx}
+                src={url}
+                alt={`preview--image-${idx}`}
+                height={20}
+                width={20}
+              />
+            ))}
+          </div>
         </div>
         <div className="grid grid-cols-2 gap-1">
           <button

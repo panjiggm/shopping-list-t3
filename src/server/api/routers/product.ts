@@ -1,6 +1,21 @@
-import { Input } from "postcss";
+import { client } from "@/pages/api/s3-upload";
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { z } from "zod";
 import { createTRPCRouter, publicProcedure } from "../trpc";
+
+const deleteObjectsS3 = async (keys: any) => {
+  const command = new DeleteObjectsCommand({
+    Bucket: process.env.S3_BUCKET_NAME,
+    Delete: {
+      Objects: keys,
+    },
+  });
+  try {
+    await client.send(command);
+  } catch (err) {
+    console.error("Err delete objects", err);
+  }
+};
 
 export const productRouter = createTRPCRouter({
   getAll: publicProcedure.query(({ ctx }) => {
@@ -26,8 +41,10 @@ export const productRouter = createTRPCRouter({
     }),
 
   delete: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(z.object({ id: z.string(), keys: z.array(z.any()) }))
     .mutation(({ ctx, input }) => {
+      deleteObjectsS3(input.keys);
+
       return ctx.prisma.product.delete({
         where: {
           id: input.id,
@@ -71,5 +88,11 @@ export const productRouter = createTRPCRouter({
           checked: input.checked,
         },
       });
+    }),
+
+  createPresignedUrls: publicProcedure
+    .input(z.object({ id: z.string() }))
+    .query(({ ctx }) => {
+      return ctx.prisma.product.create;
     }),
 });

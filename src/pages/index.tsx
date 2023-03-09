@@ -8,6 +8,13 @@ import { ListItemProduct } from "@/components/ListIItemProduct";
 
 const Home: NextPage = () => {
   const [modalOpen, setModalOpen] = useState<boolean>(false);
+  const [imagesData, setImagesData] = useState<
+    {
+      imgUrl: string;
+      fileName: string;
+      s3Key: string;
+    }[]
+  >([]);
 
   const {
     data: products,
@@ -16,6 +23,14 @@ const Home: NextPage = () => {
   } = api.product.getAll.useQuery();
 
   const { mutate: createProduct } = api.product.create.useMutation({
+    onSuccess: ({ id }) => {
+      const images = imagesData?.map((image) => ({ ...image, productId: id }));
+      createImage({ images });
+      setImagesData([]);
+    },
+  });
+
+  const { mutate: createImage } = api.image.create.useMutation({
     onSuccess: () => {
       refetchProducts();
     },
@@ -32,6 +47,10 @@ const Home: NextPage = () => {
       refetchProducts();
     },
   });
+
+  // const handleDelete = async (id: string, keys: Array<{ Key: string }>) => {
+  //   deleteProduct({ id, keys });
+  // };
 
   const { mutate: checkProduct } = api.product.toggleCheck.useMutation({
     onSuccess: () => {
@@ -51,6 +70,7 @@ const Home: NextPage = () => {
         <ProductModal
           onModalOpen={setModalOpen}
           createProduct={createProduct}
+          setImagesData={setImagesData}
         />
       )}
 
@@ -74,7 +94,7 @@ const Home: NextPage = () => {
               <ListItemProduct
                 key={product.id}
                 product={product}
-                deleteProduct={deleteProduct}
+                onDelete={deleteProduct}
                 checkProduct={checkProduct}
                 updateProduct={updateProduct}
               />

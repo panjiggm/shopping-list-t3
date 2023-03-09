@@ -22,4 +22,14 @@ model Product {
     name    String
     price   Int
     checked Boolean @default(false)
+    images  Image[]
+}
+
+model Image {
+    id        String   @id @default(cuid())
+    imgUrl    String
+    s3Key     String
+    fileName  String
+    product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+    productId String?
 }
